@@ -1,11 +1,43 @@
 import express from "express";
-import { webhookCallback } from "grammy";
+import type { Server } from "http";
 import { createBot } from "./bot";
 import { config } from "./config";
 import { closePool } from "./db/pool";
 
+function createHealthApp(): express.Express {
+  const app = express();
+
+  app.get("/health", (_req, res) => {
+    res.status(200).json({ ok: true });
+  });
+
+  return app;
+}
+
+function startHealthServer(): Server {
+  const app = createHealthApp();
+
+  return app.listen(config.port, () => {
+    console.log(`Bot health server is listening on port ${config.port}`);
+  });
+}
+
+function closeServer(server: Server): Promise<void> {
+  return new Promise((resolve, reject) => {
+    server.close((error) => {
+      if (error) {
+        reject(error);
+        return;
+      }
+
+      resolve();
+    });
+  });
+}
+
 async function startPolling(): Promise<void> {
   const bot = createBot();
+  const healthServer = startHealthServer();
 
   process.once("SIGINT", () => {
     bot.stop();
@@ -15,26 +47,27 @@ async function startPolling(): Promise<void> {
     bot.stop();
   });
 
-  await bot.start({
-    onStart: (botInfo) => {
-      console.log(`Bot @${botInfo.username} started in polling mode`);
-    }
-  });
-
-  await closePool();
+  try {
+    await bot.start({
+      onStart: (botInfo) => {
+        console.log(`Bot @${botInfo.username} started in polling mode`);
+      }
+    });
+  } finally {
+    await closeServer(healthServer).catch((error) => {
+      console.error("Failed to close health server", error);
+    });
+    await closePool();
+  }
 }
 
 function startWebhookServer(): void {
   const bot = createBot();
-  const app = express();
+  const app = createHealthApp();
 
   app.use(express.json());
 
-  app.get("/health", (_req, res) => {
-    res.status(200).json({ ok: true });
-  });
-
-  app.post("/telegram/webhook", (req, res, next) => {
+  app.post("/telegram/webhook", async (req, res, next) => {
     const secret = req.header("X-Telegram-Bot-Api-Secret-Token");
 
     if (secret !== config.telegramWebhookSecret) {
@@ -42,10 +75,13 @@ function startWebhookServer(): void {
       return;
     }
 
-    next();
+    try {
+      await bot.handleUpdate(req.body);
+      res.sendStatus(200);
+    } catch (error) {
+      next(error);
+    }
   });
-
-  app.post("/telegram/webhook", webhookCallback(bot, "express"));
 
   const server = app.listen(config.port, () => {
     console.log(`Bot webhook server is listening on port ${config.port}`);
@@ -67,17 +103,11 @@ function startWebhookServer(): void {
   process.once("SIGTERM", shutdown);
 }
 
-if (config.nodeEnv === "production") {
+if (config.botMode === "webhook") {
   startWebhookServer();
 } else {
   startPolling().catch((error) => {
     console.error("Failed to start bot in polling mode", error);
-    closePool()
-      .catch((poolError) => {
-        console.error("Failed to close database pool", poolError);
-      })
-      .finally(() => {
-        process.exit(1);
-      });
+    process.exit(1);
   });
 }

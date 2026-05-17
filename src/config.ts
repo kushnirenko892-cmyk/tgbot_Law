@@ -14,6 +14,7 @@ const optionalUrl = z.union([z.string().url(), z.literal("")]).default("");
 const envSchema = z.object({
   TELEGRAM_BOT_TOKEN: z.string().min(1, "TELEGRAM_BOT_TOKEN is required"),
   TELEGRAM_ADMIN_CHAT_ID: z.string().min(1, "TELEGRAM_ADMIN_CHAT_ID is required"),
+  BOT_MODE: z.enum(["polling", "webhook"]).default("polling"),
   TELEGRAM_WEBHOOK_SECRET: z.string().default(""),
   TELEGRAM_API_PROXY_URL: optionalUrl,
   PUBLIC_BOT_URL: optionalUrl,
@@ -41,8 +42,12 @@ if (!parsed.success) {
   throw new Error(`Invalid environment configuration: ${message}`);
 }
 
-if (parsed.data.NODE_ENV === "production" && parsed.data.TELEGRAM_WEBHOOK_SECRET.length === 0) {
-  throw new Error("TELEGRAM_WEBHOOK_SECRET is required in production");
+if (parsed.data.BOT_MODE === "webhook" && parsed.data.TELEGRAM_WEBHOOK_SECRET.length === 0) {
+  throw new Error("TELEGRAM_WEBHOOK_SECRET is required in webhook mode");
+}
+
+if (parsed.data.BOT_MODE === "webhook" && parsed.data.PUBLIC_BOT_URL.length === 0) {
+  throw new Error("PUBLIC_BOT_URL is required in webhook mode");
 }
 
 const requiredDocumentUrls = {
@@ -63,6 +68,7 @@ if (missingDocumentUrls.length > 0) {
 export const config = {
   telegramBotToken: parsed.data.TELEGRAM_BOT_TOKEN,
   telegramAdminChatId: parsed.data.TELEGRAM_ADMIN_CHAT_ID,
+  botMode: parsed.data.BOT_MODE,
   telegramWebhookSecret: parsed.data.TELEGRAM_WEBHOOK_SECRET,
   telegramApiProxyUrl: parsed.data.TELEGRAM_API_PROXY_URL || undefined,
   publicBotUrl: parsed.data.PUBLIC_BOT_URL,

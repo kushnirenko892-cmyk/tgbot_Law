@@ -17,6 +17,7 @@
 ```env
 TELEGRAM_BOT_TOKEN=
 TELEGRAM_ADMIN_CHAT_ID=
+BOT_MODE=polling
 TELEGRAM_WEBHOOK_SECRET=
 TELEGRAM_API_PROXY_URL=
 PUBLIC_BOT_URL=
@@ -35,6 +36,8 @@ NODE_ENV=development
 ```
 
 Все четыре ссылки на документы обязательны: без них бот не должен запускаться.
+`BOT_MODE` может быть `polling` или `webhook`; по умолчанию используется `polling`.
+`TELEGRAM_WEBHOOK_SECRET` и `PUBLIC_BOT_URL` обязательны только для `BOT_MODE=webhook`.
 `TELEGRAM_API_PROXY_URL` необязателен. Если серверу нужен SOCKS5-прокси для доступа к Telegram API, укажите значение в формате `socks5://login:password@host:port`.
 
 ## 3. Локальная база
@@ -61,7 +64,7 @@ npm.cmd install
 npm.cmd run dev
 ```
 
-В development используется polling, webhook не нужен.
+При `BOT_MODE=polling` бот запускается через long polling и поднимает только `/health`. При `BOT_MODE=webhook` используется `POST /telegram/webhook`.
 
 ## 5. Проверка MVP
 

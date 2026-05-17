@@ -4,18 +4,18 @@ import { createBot } from "./bot";
 import { config } from "./config";
 import { closePool } from "./db/pool";
 
-function createHealthApp(): express.Express {
+function createHealthApp(mode: typeof config.botMode): express.Express {
   const app = express();
 
   app.get("/health", (_req, res) => {
-    res.status(200).json({ ok: true });
+    res.status(200).json({ ok: true, mode });
   });
 
   return app;
 }
 
-function startHealthServer(): Server {
-  const app = createHealthApp();
+function startHealthServer(mode: typeof config.botMode): Server {
+  const app = createHealthApp(mode);
 
   return app.listen(config.port, () => {
     console.log(`Bot health server is listening on port ${config.port}`);
@@ -35,35 +35,68 @@ function closeServer(server: Server): Promise<void> {
   });
 }
 
+function isAbortedDelay(error: unknown): boolean {
+  return error instanceof Error && error.message === "Aborted delay";
+}
+
 async function startPolling(): Promise<void> {
+  console.log("Bot is starting in polling mode");
+
   const bot = createBot();
-  const healthServer = startHealthServer();
+  const healthServer = startHealthServer("polling");
+  let shutdownRequested = false;
 
-  process.once("SIGINT", () => {
-    bot.stop();
-  });
+  const stopPolling = (signal: NodeJS.Signals): void => {
+    shutdownRequested = true;
+    console.log(`Received ${signal}, stopping polling bot`);
 
-  process.once("SIGTERM", () => {
-    bot.stop();
+    void bot.stop().catch((error) => {
+      if (!isAbortedDelay(error)) {
+        console.error("Failed to stop polling bot", error);
+      }
+    });
+  };
+
+  process.once("SIGINT", () => stopPolling("SIGINT"));
+  process.once("SIGTERM", () => stopPolling("SIGTERM"));
+
+  bot.catch((error) => {
+    console.error("Bot update error", error);
   });
 
   try {
+    await bot.init();
+    console.log(`Bot @${bot.botInfo.username} initialized`);
+
+    if (shutdownRequested) {
+      return;
+    }
+
     await bot.start({
+      drop_pending_updates: true,
       onStart: (botInfo) => {
         console.log(`Bot @${botInfo.username} started in polling mode`);
       }
     });
+  } catch (error) {
+    if (shutdownRequested && isAbortedDelay(error)) {
+      return;
+    }
+
+    throw error;
   } finally {
     await closeServer(healthServer).catch((error) => {
       console.error("Failed to close health server", error);
     });
-    await closePool();
+    await closePool().catch((error) => {
+      console.error("Failed to close database pool", error);
+    });
   }
 }
 
 function startWebhookServer(): void {
   const bot = createBot();
-  const app = createHealthApp();
+  const app = createHealthApp("webhook");
 
   app.use(express.json());
 

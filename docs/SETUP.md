@@ -18,6 +18,7 @@
 TELEGRAM_BOT_TOKEN=
 TELEGRAM_ADMIN_CHAT_ID=
 TELEGRAM_WEBHOOK_SECRET=
+TELEGRAM_API_PROXY_URL=
 PUBLIC_BOT_URL=
 DATABASE_URL=postgres://bot:bot_password@localhost:5432/elizaveta_bot
 DATABASE_SSL=false
@@ -34,6 +35,7 @@ NODE_ENV=development
 ```
 
 Все четыре ссылки на документы обязательны: без них бот не должен запускаться.
+`TELEGRAM_API_PROXY_URL` необязателен. Если серверу нужен SOCKS5-прокси для доступа к Telegram API, укажите значение в формате `socks5://login:password@host:port`.
 
 ## 3. Локальная база
 

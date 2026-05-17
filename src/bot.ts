@@ -1,4 +1,5 @@
-import { Bot, type Context } from "grammy";
+import { Bot, type BotConfig, type Context } from "grammy";
+import { SocksProxyAgent } from "socks-proxy-agent";
 import { config } from "./config";
 import { consentMenu, CONSENT_ACCEPT_CALLBACK } from "./keyboards/consentMenu";
 import { mainMenu, MAIN_MENU_LABELS } from "./keyboards/mainMenu";
@@ -74,7 +75,18 @@ async function createLeadAndNotify(
 }
 
 export function createBot(): Bot {
-  const bot = new Bot(config.telegramBotToken);
+  const botConfig: BotConfig<BotContext> | undefined = config.telegramApiProxyUrl
+    ? {
+        client: {
+          baseFetchConfig: {
+            agent: new SocksProxyAgent(config.telegramApiProxyUrl),
+            compress: true
+          }
+        }
+      }
+    : undefined;
+
+  const bot = new Bot(config.telegramBotToken, botConfig);
 
   bot.command("start", async (ctx) => {
     if (!ctx.from) {

@@ -11,5 +11,5 @@ export function consentMenu(): InlineKeyboard {
     .row()
     .url("Согласие на получение информационных сообщений", config.infoMessagesConsentUrl)
     .row()
-    .text("Продолжить", CONSENT_ACCEPT_CALLBACK);
+    .text("✅ Продолжить", CONSENT_ACCEPT_CALLBACK);
 }

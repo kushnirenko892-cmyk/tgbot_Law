@@ -7,11 +7,9 @@ export function consentMenu(): InlineKeyboard {
   return new InlineKeyboard()
     .url("Политика обработки персональных данных", config.personalDataPolicyUrl)
     .row()
-    .url("Пользовательское соглашение", config.userAgreementUrl)
-    .row()
     .url("Согласие на обработку персональных данных", config.personalDataConsentUrl)
     .row()
-    .url("Оферта", config.publicOfferUrl)
+    .url("Согласие на получение информационных сообщений", config.infoMessagesConsentUrl)
     .row()
-    .text("✅ Согласен, продолжить", CONSENT_ACCEPT_CALLBACK);
+    .text("Продолжить", CONSENT_ACCEPT_CALLBACK);
 }

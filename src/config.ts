@@ -26,6 +26,7 @@ const envSchema = z.object({
   PERSONAL_DATA_POLICY_URL: optionalUrl,
   USER_AGREEMENT_URL: optionalUrl,
   PERSONAL_DATA_CONSENT_URL: optionalUrl,
+  INFO_MESSAGES_CONSENT_URL: optionalUrl,
   PUBLIC_OFFER_URL: optionalUrl,
   CONSENT_TEXT_VERSION: z.string().min(1).default("2026-05-17-v1"),
   PORT: z.coerce.number().int().positive().default(3000),
@@ -52,9 +53,8 @@ if (parsed.data.BOT_MODE === "webhook" && parsed.data.PUBLIC_BOT_URL.length === 
 
 const requiredDocumentUrls = {
   PERSONAL_DATA_POLICY_URL: parsed.data.PERSONAL_DATA_POLICY_URL,
-  USER_AGREEMENT_URL: parsed.data.USER_AGREEMENT_URL,
   PERSONAL_DATA_CONSENT_URL: parsed.data.PERSONAL_DATA_CONSENT_URL,
-  PUBLIC_OFFER_URL: parsed.data.PUBLIC_OFFER_URL
+  INFO_MESSAGES_CONSENT_URL: parsed.data.INFO_MESSAGES_CONSENT_URL
 } as const;
 
 const missingDocumentUrls = Object.entries(requiredDocumentUrls)
@@ -62,7 +62,9 @@ const missingDocumentUrls = Object.entries(requiredDocumentUrls)
   .map(([name]) => name);
 
 if (missingDocumentUrls.length > 0) {
-  throw new Error(`${missingDocumentUrls.join(", ")} are required before running the bot`);
+  throw new Error(
+    `${missingDocumentUrls.join(", ")} are required before running the bot consent flow`
+  );
 }
 
 export const config = {
@@ -80,6 +82,7 @@ export const config = {
   personalDataPolicyUrl: parsed.data.PERSONAL_DATA_POLICY_URL,
   userAgreementUrl: parsed.data.USER_AGREEMENT_URL,
   personalDataConsentUrl: parsed.data.PERSONAL_DATA_CONSENT_URL,
+  infoMessagesConsentUrl: parsed.data.INFO_MESSAGES_CONSENT_URL,
   publicOfferUrl: parsed.data.PUBLIC_OFFER_URL,
   consentTextVersion: parsed.data.CONSENT_TEXT_VERSION,
   port: parsed.data.PORT,
